@@ -32,7 +32,7 @@ class Api::MessagesController < ApplicationController
         end
         @message = Message.new(chat_id: @chat.id, message: params[:message], number: number)
         if @message.save
-            Message.reindex
+            Message.reindex(async: true)
             @chat.update(message_count: @chat.message_count + 1)
             render json: {status: :created, error: '', data: {number: @message.number}}, status: :created
         else
@@ -43,7 +43,7 @@ class Api::MessagesController < ApplicationController
     # PATCH/PUT /messages/1
     def update
         if @message.update(message_params)
-            Message.reindex
+            Message.reindex(async: true)
             render json: {status: :created, error: '', data: {number: @message.number}}, status: :created
         else
             render json: {status: :unprocessable_entity, error: @message.errors, data: []}, status: :unprocessable_entity
