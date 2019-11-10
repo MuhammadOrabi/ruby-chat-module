@@ -25,20 +25,15 @@ class Api::MessagesController < ApplicationController
 
     # POST /messages
     def create
-        @last_message = @chat.messages.order('number DESC').first
-        number = 1
-        if @last_message
-            number = @last_message.number + 1
-        end
-        @message = Message.new(message_params)
-        @message.chat_id = @chat.id
-        @message.number = number
-        if @message.save
-            Message.reindex(async: true)
-            @chat.update(message_count: @chat.message_count + 1)
-            render json: {status: :created, error: '', data: {number: @message.number}}, status: :created
+        number = @chat.message_count + 1
+        @chat.update(message_count: @chat.message_count + 1)
+
+        CreateMessageWorker.perform_async(message_params[:message], @chat.id, number)
+
+        if message_params[:message]
+            render json: {status: :created, error: '', data: {number: number}}, status: :created
         else
-            render json: {status: :unprocessable_entity, error: @message.errors, data: []}, status: :unprocessable_entity
+            render json: {status: :unprocessable_entity, error: 'invalid message', data: []}, status: :unprocessable_entity
         end
     end
 
