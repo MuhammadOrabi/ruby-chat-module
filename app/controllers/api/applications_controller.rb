@@ -30,9 +30,9 @@ class Api::ApplicationsController < ApplicationController
   # PATCH/PUT /applications/1
   def update
     if @application.update(application_params)
-        render json: {status: :created, error: '', data: {
+        render json: {status: :ok, error: '', data: {
             name: @application.name, token: @application.token, chat_count: @application.chat_count
-        }}, status: :created
+        }}, status: :ok
     else
         render json: {status: :unprocessable_entity, error: @application.errors, data: []}, status: :unprocessable_entity
     end

@@ -46,7 +46,7 @@ class Api::MessagesController < ApplicationController
     def update
         if @message.update(message_params)
             Message.reindex(async: true)
-            render json: {status: :created, error: '', data: {number: @message.number}}, status: :created
+            render json: {status: :ok, error: '', data: {number: @message.number}}, status: :ok
         else
             render json: {status: :unprocessable_entity, error: @message.errors, data: []}, status: :unprocessable_entity
         end
