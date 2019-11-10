@@ -30,7 +30,9 @@ class Api::MessagesController < ApplicationController
         if @last_message
             number = @last_message.number + 1
         end
-        @message = Message.new(chat_id: @chat.id, message: params[:message], number: number)
+        @message = Message.new(message_params)
+        @message.chat_id = @chat.id
+        @message.number = number
         if @message.save
             Message.reindex(async: true)
             @chat.update(message_count: @chat.message_count + 1)
@@ -76,6 +78,6 @@ class Api::MessagesController < ApplicationController
     end
     # Only allow a trusted parameter "white list" through.
     def message_params
-      params.permit(:message)
+        params.permit(:message)
     end
 end
