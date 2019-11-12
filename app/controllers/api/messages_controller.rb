@@ -7,11 +7,18 @@ class Api::MessagesController < ApplicationController
     def index
         search = params[:query].present? ? params[:query] : nil
         @messages = if search
-            Message.search(search, where: {chat_id: @chat.id}, order: {number: :desc}).map do |m|
-                { number: m.number, message: m.message }
+            begin
+                Message.search(search, where: {chat_id: @chat.id}, order: {number: :desc})
+            rescue StandardError => e
+                puts e.message
+                puts e.backtrace.inspect
+                @chat.messages.where("message LIKE ?", '%' + search + '%').select('number', 'message').order('number DESC')
             end
         else
             @chat.messages.select('number', 'message').order('number DESC')
+        end
+        @messages = @messages.map do |m|
+            { number: m.number, message: m.message }
         end
         render json: {status: :ok, error: '', data: @messages}, status: :ok
     end
@@ -25,12 +32,12 @@ class Api::MessagesController < ApplicationController
 
     # POST /messages
     def create
-        number = @chat.message_count + 1
-        @chat.update(message_count: @chat.message_count + 1)
+        if message_params[:message] && !message_params[:message].empty?
+            number = @chat.message_count + 1
+            @chat.update(message_count: @chat.message_count + 1)
 
-        CreateMessageWorker.perform_async(message_params[:message], @chat.id, number)
+            CreateMessageWorker.perform_async(message_params[:message], @chat.id, number)
 
-        if message_params[:message]
             render json: {status: :created, error: '', data: {number: number}}, status: :created
         else
             render json: {status: :unprocessable_entity, error: 'invalid message', data: []}, status: :unprocessable_entity
@@ -39,11 +46,11 @@ class Api::MessagesController < ApplicationController
 
     # PATCH/PUT /messages/1
     def update
-        if @message.update(message_params)
-            Message.reindex(async: true)
+        if message_params[:message] && !message_params[:message].empty?
+            UpdateMessageWorker.perform_async(@message.id, params[:message])
             render json: {status: :ok, error: '', data: {number: @message.number}}, status: :ok
         else
-            render json: {status: :unprocessable_entity, error: @message.errors, data: []}, status: :unprocessable_entity
+            render json: {status: :unprocessable_entity, error: 'invalid message', data: []}, status: :unprocessable_entity
         end
     end
 

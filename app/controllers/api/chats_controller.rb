@@ -18,18 +18,13 @@ class Api::ChatsController < ApplicationController
 
     # POST /chats
     def create
-        @last_chat = @app.chats.order('number DESC').first
-        number = 1
-        if @last_chat
-            number = @last_chat.number + 1
-        end
-        @chat = Chat.new(application_id: @app.id, number: number, message_count: 0)
-        if @chat.save
-            @app.update(chat_count: @app.chat_count + 1)
-            render json: {status: :created, error: '', data: {number: @chat.number}}, status: :created
-        else
-            render json: {status: :unprocessable_entity, error: @chat.errors, data: []}, status: :unprocessable_entity
-        end
+        number = @app.chat_count + 1
+
+        @app.update(chat_count: number)
+
+        CreateChatWorker.perform_async(@app.id, number)
+
+        render json: {status: :created, error: '', data: {number: number}}, status: :created
     end
 
     # PATCH/PUT /chats/1
